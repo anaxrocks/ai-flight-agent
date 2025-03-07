@@ -1,6 +1,7 @@
 import os
 import discord
 import logging
+import json
 
 from discord.ext import commands
 from discord.ext import tasks
@@ -92,17 +93,17 @@ async def on_message(message: discord.Message):
     user_id = str(message.author.id)
     
     # Check if this is a new conversation or continuing one
-    flight_keywords = ["flight", "flights", "fly", "flying", "airline", "airport", "travel"]
-    is_flight_related = any(keyword in message.content.lower() for keyword in flight_keywords)
+    flight_keywords = ["flight", "flights", "fly", "flying", "airline", "airport", "travel", "hotel", "booking"]
+    is_travel_related = any(keyword in message.content.lower() for keyword in flight_keywords)
     
-    # Start a new session only if user doesn't have one and message mentions flights
-    if is_flight_related and user_id not in agent.user_sessions:
+    # Start a new session only if user doesn't have one and message mentions travel
+    if is_travel_related and user_id not in agent.user_sessions:
         agent.user_sessions[user_id] = {'active': True, 'last_interaction': message.created_at}
     
-    # Process message if user has an active session OR message mentions flights
-    if (user_id in agent.user_sessions and agent.user_sessions[user_id].get('active', False)) or is_flight_related:
-        # If this is a flight message but user already has a session, just update the session
-        if is_flight_related and user_id in agent.user_sessions:
+    # Process message if user has an active session OR message mentions travel
+    if (user_id in agent.user_sessions and agent.user_sessions[user_id].get('active', False)) or is_travel_related:
+        # If this is a travel message but user already has a session, just update the session
+        if is_travel_related and user_id in agent.user_sessions:
             agent.user_sessions[user_id]['active'] = True
             agent.user_sessions[user_id]['last_interaction'] = message.created_at
         
@@ -113,6 +114,26 @@ async def on_message(message: discord.Message):
             
             try:
                 response = await agent.run(message)
+                
+                # Check if search parameters are available
+                if os.path.exists('flight_search_params.json') and os.path.exists('hotel_search_params.json'):
+                    # Load search parameters
+                    with open('flight_search_params.json', 'r') as f:
+                        flight_params = json.load(f)
+                    with open('hotel_search_params.json', 'r') as f:
+                        hotel_params = json.load(f)
+                    
+                    # Execute searches if parameters are complete
+                    if all(value is not None for value in flight_params.values()):
+                        from database import search_flights, search_hotels
+                        await message.channel.send("🔍 Searching for the best travel options...")
+                        
+                        # Execute searches
+                        search_flights(**flight_params)
+                        search_hotels(**hotel_params)
+                        
+                        # Get the analysis from the agent
+                        response = await agent.run(message)
                 
                 # Check if response is too long for Discord (2000 characters limit)
                 if len(response) > 2000:
@@ -160,6 +181,8 @@ async def reset(ctx):
     user_id = str(ctx.author.id)
     if hasattr(agent, 'user_sessions') and user_id in agent.user_sessions:
         agent.user_sessions[user_id]['active'] = False
+    # Reset the conversation history
+    agent.reset_conversation(user_id)
     await ctx.send("Your flight search has been reset. Ask me any flight-related questions to start a new search.")
 
 
