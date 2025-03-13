@@ -14,8 +14,8 @@ SYSTEM_PROMPT = """You are a helpful flight and hotel booking assistant. Your ta
 1. Extract travel information from user messages and store it in the correct format:
    - Origin airport (must end in .AIRPORT, e.g., 'JFK.AIRPORT')
    - Destination airport (must end in .AIRPORT, e.g., 'LAX.AIRPORT')
-   - Departure date (YYYY-MM-DD format)
-   - Return date (YYYY-MM-DD format)
+   - Departure date (YYYY-MM-DD format, assume year 2025 if not specified)
+   - Return date (YYYY-MM-DD format, assume year 2025 if not specified)
    - Number of adults (integer)
    - Number of children (integer)
    - Children's ages (comma-separated string, e.g., "5,0")
@@ -75,8 +75,8 @@ class MistralAgent:
             'depart_date': None,
             'return_date': None,
             'adults': 1,
-            'children': 0,
-            'children_ages': [],
+            'children': 1,
+            'children_ages': '0',
             'cabin_class': 'ECONOMY',
             'sort': 'BEST',
             'currency_code': 'USD',
@@ -107,7 +107,7 @@ class MistralAgent:
             'return_date': data.get('return_date'),
             'page_no': 1,
             'adults': int(data.get('adults', 1)),
-            'children': str(data.get('children', '0')),
+            'children': str(data.get('children', '0')),  # Keep original value for flights
             'sort': data.get('sort', 'BEST'),
             'cabin_class': data.get('cabin_class', 'ECONOMY'),
             'currency_code': data.get('currency_code', 'USD')
@@ -121,8 +121,8 @@ class MistralAgent:
             'checkout_date': data.get('return_date'),
             'room_number': int(data.get('room_number', 1)),
             'adults_number': int(data.get('adults', 1)),
-            'children_number': int(data.get('children', 0)),
-            'children_ages': data.get('children_ages', '0') if int(data.get('children', 0)) > 0 else '0'
+            'children_number': max(1, int(data.get('children', 0))),  # Ensure minimum of 1 child for hotels only
+            'children_ages': '0'  # Always set to '0' since we always have at least 1 child for hotels
         }
 
         return flight_params, hotel_params
@@ -239,7 +239,7 @@ class MistralAgent:
                         response += "\n🏨 **Hotel Options:**\n"
                         for i, hotel in enumerate(hotel_results[:3], 1):
                             response += f"{i}. {hotel.get('name', 'Hotel Name')}\n"
-                            response += f"   • Price per night: ${hotel.get('price', 'N/A')}\n"
+                            response += f"   • Total price: ${hotel.get('price', 'N/A')}\n"
                             if hotel.get('review_score'):
                                 response += f"   • Rating: {hotel.get('review_score')}/10\n"
                             response += f"   • Check-in: {hotel_params['checkin_date']}\n"
