@@ -122,7 +122,7 @@ class MistralAgent:
             'room_number': int(data.get('room_number', 1)),
             'adults_number': int(data.get('adults', 1)),
             'children_number': int(data.get('children', 0)),
-            'children_ages': data.get('children_ages', '')
+            'children_ages': data.get('children_ages', '0') if int(data.get('children', 0)) > 0 else '0'
         }
 
         return flight_params, hotel_params
@@ -197,7 +197,17 @@ class MistralAgent:
                 
                 # Execute hotel search if we have coordinates
                 if hotel_params['latitude'] and hotel_params['longitude']:
-                    search_hotels(**hotel_params)
+                    try:
+                        print(f"Attempting hotel search with params: {hotel_params}")  # Debug print
+                        search_hotels(**hotel_params)
+                        if not os.path.exists('hotel_options.json'):
+                            print("Hotel search completed but no JSON file was created")
+                    except Exception as hotel_error:
+                        print(f"Hotel search error: {str(hotel_error)}")
+                        await message.channel.send(f"⚠️ Note: Could not complete hotel search: {str(hotel_error)}")
+                else:
+                    print(f"Missing coordinates. Latitude: {hotel_params['latitude']}, Longitude: {hotel_params['longitude']}")
+                    await message.channel.send("⚠️ Note: Could not search for hotels - missing location coordinates")
                 
                 # Analyze and combine results
                 response = "Here are the travel options I found:\n\n"
