@@ -1,1 +1,192 @@
-[]
+[
+    {
+        "departure_airport": "SFO",
+        "arrival_airport": "JFK",
+        "departure_time": "2025-03-20T11:02:00",
+        "arrival_time": "2025-03-21T06:30:00",
+        "stops": 1,
+        "airline_code": "F9",
+        "airline_name": "Frontier Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/F9.png",
+        "flight_number": 4158,
+        "cabin_class": "ECONOMY",
+        "duration": "1h 44m",
+        "departure_terminal": "I",
+        "arrival_terminal": "3",
+        "price": {
+            "currency": "USD",
+            "amount": 239.98
+        }
+    },
+    {
+        "departure_airport": "JFK",
+        "arrival_airport": "SFO",
+        "departure_time": "2025-04-05T13:00:00",
+        "arrival_time": "2025-04-05T22:54:00",
+        "stops": 1,
+        "airline_code": "F9",
+        "airline_name": "Frontier Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/F9.png",
+        "flight_number": 1871,
+        "cabin_class": "ECONOMY",
+        "duration": "2h 35m",
+        "departure_terminal": "0",
+        "arrival_terminal": "N",
+        "price": {
+            "currency": "USD",
+            "amount": 239.98
+        }
+    },
+    {
+        "departure_airport": "SFO",
+        "arrival_airport": "JFK",
+        "departure_time": "2025-03-20T11:02:00",
+        "arrival_time": "2025-03-21T06:30:00",
+        "stops": 1,
+        "airline_code": "F9",
+        "airline_name": "Frontier Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/F9.png",
+        "flight_number": 4158,
+        "cabin_class": "ECONOMY",
+        "duration": "1h 44m",
+        "departure_terminal": "I",
+        "arrival_terminal": "3",
+        "price": {
+            "currency": "USD",
+            "amount": 239.98
+        }
+    },
+    {
+        "departure_airport": "JFK",
+        "arrival_airport": "SFO",
+        "departure_time": "2025-04-05T06:59:00",
+        "arrival_time": "2025-04-05T18:22:00",
+        "stops": 1,
+        "airline_code": "F9",
+        "airline_name": "Frontier Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/F9.png",
+        "flight_number": 3237,
+        "cabin_class": "ECONOMY",
+        "duration": "5h 52m",
+        "departure_terminal": "0",
+        "arrival_terminal": "3",
+        "price": {
+            "currency": "USD",
+            "amount": 239.98
+        }
+    },
+    {
+        "departure_airport": "SFO",
+        "arrival_airport": "JFK",
+        "departure_time": "2025-03-20T07:11:00",
+        "arrival_time": "2025-03-20T20:30:00",
+        "stops": 1,
+        "airline_code": "AA",
+        "airline_name": "American Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/AA.png",
+        "flight_number": 1960,
+        "cabin_class": "ECONOMY",
+        "duration": "5h 0m",
+        "departure_terminal": "",
+        "arrival_terminal": "",
+        "price": {
+            "currency": "USD",
+            "amount": 306.79
+        }
+    },
+    {
+        "departure_airport": "JFK",
+        "arrival_airport": "SFO",
+        "departure_time": "2025-04-05T17:00:00",
+        "arrival_time": "2025-04-05T22:39:00",
+        "stops": 1,
+        "airline_code": "AA",
+        "airline_name": "American Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/AA.png",
+        "flight_number": 1186,
+        "cabin_class": "ECONOMY",
+        "duration": "5h 38m",
+        "departure_terminal": "",
+        "arrival_terminal": "",
+        "price": {
+            "currency": "USD",
+            "amount": 306.79
+        }
+    },
+    {
+        "departure_airport": "SFO",
+        "arrival_airport": "JFK",
+        "departure_time": "2025-03-20T07:11:00",
+        "arrival_time": "2025-03-20T20:30:00",
+        "stops": 1,
+        "airline_code": "AA",
+        "airline_name": "American Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/AA.png",
+        "flight_number": 1960,
+        "cabin_class": "ECONOMY",
+        "duration": "5h 0m",
+        "departure_terminal": "",
+        "arrival_terminal": "",
+        "price": {
+            "currency": "USD",
+            "amount": 306.79
+        }
+    },
+    {
+        "departure_airport": "JFK",
+        "arrival_airport": "SFO",
+        "departure_time": "2025-04-05T15:25:00",
+        "arrival_time": "2025-04-05T21:05:00",
+        "stops": 1,
+        "airline_code": "AA",
+        "airline_name": "American Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/AA.png",
+        "flight_number": 3179,
+        "cabin_class": "ECONOMY",
+        "duration": "2h 5m",
+        "departure_terminal": "",
+        "arrival_terminal": "",
+        "price": {
+            "currency": "USD",
+            "amount": 306.79
+        }
+    },
+    {
+        "departure_airport": "SFO",
+        "arrival_airport": "JFK",
+        "departure_time": "2025-03-20T07:11:00",
+        "arrival_time": "2025-03-20T20:30:00",
+        "stops": 1,
+        "airline_code": "AA",
+        "airline_name": "American Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/AA.png",
+        "flight_number": 1960,
+        "cabin_class": "ECONOMY",
+        "duration": "5h 0m",
+        "departure_terminal": "",
+        "arrival_terminal": "",
+        "price": {
+            "currency": "USD",
+            "amount": 306.79
+        }
+    },
+    {
+        "departure_airport": "JFK",
+        "arrival_airport": "SFO",
+        "departure_time": "2025-04-05T13:00:00",
+        "arrival_time": "2025-04-05T22:54:00",
+        "stops": 1,
+        "airline_code": "F9",
+        "airline_name": "Frontier Airlines",
+        "airline_logo": "https://r-xx.bstatic.com/data/airlines_logo/F9.png",
+        "flight_number": 1871,
+        "cabin_class": "ECONOMY",
+        "duration": "2h 35m",
+        "departure_terminal": "0",
+        "arrival_terminal": "N",
+        "price": {
+            "currency": "USD",
+            "amount": 239.98
+        }
+    }
+]
