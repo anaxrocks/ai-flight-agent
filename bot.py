@@ -2,6 +2,7 @@ import os
 import discord
 import logging
 import json
+import requests
 
 from discord.ext import commands
 from discord.ext import tasks

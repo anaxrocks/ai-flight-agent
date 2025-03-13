@@ -2,21 +2,63 @@ import os
 import json
 from mistralai import Mistral
 import discord
+import requests
+import json
+from datetime import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
+from database import search_flights, search_hotels
 
 MISTRAL_MODEL = "mistral-large-latest"
-SYSTEM_PROMPT = """You are a helpful flight and hotel booking assistant. Follow these steps:
-1. Gather all necessary information through conversation:
-   - Origin and destination locations
-   - Travel dates (departure and return)
-   - Number of adults and children
-   - Cabin class preference
-   - Any specific preferences for hotels
-2. Once you have all information, generate search parameters
-3. After searches complete, analyze the results and present the best options
+SYSTEM_PROMPT = """You are a helpful flight and hotel booking assistant. Your task is to:
+1. Extract travel information from user messages and store it in the correct format:
+   - Origin airport (must end in .AIRPORT, e.g., 'JFK.AIRPORT')
+   - Destination airport (must end in .AIRPORT, e.g., 'LAX.AIRPORT')
+   - Departure date (YYYY-MM-DD format)
+   - Return date (YYYY-MM-DD format)
+   - Number of adults (integer)
+   - Number of children (integer)
+   - Children's ages (comma-separated string, e.g., "5,0")
+   - Cabin class (must be: ECONOMY, BUSINESS, or FIRST)
+   - Sort preference (must be: BEST, PRICE, DURATION)
+   - Hotel search parameters:
+     * Destination coordinates (estimate based on city, e.g., New York would be around latitude: 40.776676, longitude: -73.971321)
+     * Room number (integer)
+     * Hotel category (must be: "class::2,class::4,free_cancellation::1")
 
-Always maintain context and ask for missing information politely."""
+When you identify these details in the user's message, include them in your response using this format:
+<travel_data>
+{
+    "origin": "XXX.AIRPORT",
+    "destination": "XXX.AIRPORT",
+    "depart_date": "YYYY-MM-DD",
+    "return_date": "YYYY-MM-DD",
+    "adults": 2,
+    "children": 2,
+    "children_ages": "5,0",
+    "cabin_class": "ECONOMY",
+    "sort": "BEST",
+    "destination_latitude": 40.776676,  # Example for New York
+    "destination_longitude": -73.971321,  # Example for New York
+    "room_number": 1,
+    "hotel_category": "class::2,class::4,free_cancellation::1"
+}
+</travel_data>
+
+Always format airport codes with .AIRPORT suffix.
+Maintain a natural conversation while gathering missing information.
+If a user mentions a city without an airport code, ask for clarification about which airport they prefer.
+
+For hotel searches, ensure these exact parameters:
+- Estimate destination coordinates based on the destination city (e.g., New York ≈ 40.776676, -73.971321)
+- categories_filter_ids must be "class::2,class::4,free_cancellation::1"
+- page_number must be 0
+- units must be "metric"
+- locale must be "en-gb"
+- include_adjacency must be "true"
+- order_by must be "popularity"
+- filter_by_currency must be "USD"
+- Format children_ages as a comma-separated string (e.g., "5,0")"""
 
 class MistralAgent:
     def __init__(self):
@@ -32,107 +74,58 @@ class MistralAgent:
             'destination': None,
             'depart_date': None,
             'return_date': None,
-            'adults': None,
-            'children': None,
-            'cabin_class': None,
-            'hotel_checkin': None,
-            'hotel_checkout': None,
-            'room_number': None
+            'adults': 1,
+            'children': 0,
+            'children_ages': [],
+            'cabin_class': 'ECONOMY',
+            'sort': 'BEST',
+            'currency_code': 'USD',
+            'room_number': 1,
+            'destination_latitude': None,
+            'destination_longitude': None,
+            'hotel_category': "class::2,class::4,free_cancellation::1"
         }
 
-    def parse_dates(self, date_str):
-        """Convert various date formats to YYYY-MM-DD"""
-        try:
-            # Add more date formats as needed
-            formats = [
-                "%Y-%m-%d",
-                "%d/%m/%Y",
-                "%m/%d/%Y",
-                "%B %d, %Y",
-                "%b %d, %Y"
-            ]
-            for fmt in formats:
-                try:
-                    return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-                except ValueError:
-                    continue
+    def format_airport_code(self, code):
+        """Ensure airport code is properly formatted"""
+        if not code:
             return None
-        except:
-            return None
+        code = code.upper().strip()
+        if not code.endswith('.AIRPORT'):
+            code = f"{code}.AIRPORT"
+        return code
 
     def generate_search_params(self, user_id):
-        """Generate search parameters for both flights and hotels"""
+        """Generate search parameters for both flight and hotel searches"""
         data = self.user_data[user_id]
         
-        # Flight search parameters
+        # Flight search parameters with proper formatting
         flight_params = {
-            'from_id': data.get('origin'),
-            'to_id': data.get('destination'),
+            'from_id': self.format_airport_code(data.get('origin')),
+            'to_id': self.format_airport_code(data.get('destination')),
             'depart_date': data.get('depart_date'),
             'return_date': data.get('return_date'),
-            'page_no': '1',
-            'adults': data.get('adults', 1),
-            'children': data.get('children', 0),
-            'sort': 'price_low_to_high',
+            'page_no': 1,
+            'adults': int(data.get('adults', 1)),
+            'children': str(data.get('children', '0')),
+            'sort': data.get('sort', 'BEST'),
             'cabin_class': data.get('cabin_class', 'ECONOMY'),
-            'currency_code': 'USD'
+            'currency_code': data.get('currency_code', 'USD')
         }
 
-        # Hotel search parameters
+        # Hotel search parameters matching exactly what search_hotels expects
         hotel_params = {
-            'checkin_date': data.get('hotel_checkin'),
-            'checkout_date': data.get('hotel_checkout'),
-            'room_number': data.get('room_number', 1),
-            'adults_number': data.get('adults', 1),
-            'children_number': data.get('children', 0),
-            'children_ages': [10] * int(data.get('children', 0)),  # Default age 10 for children
-            'latitude': None,  # Will be filled after destination is confirmed
-            'longitude': None  # Will be filled after destination is confirmed
+            'latitude': data.get('destination_latitude'),
+            'longitude': data.get('destination_longitude'),
+            'checkin_date': data.get('depart_date'),
+            'checkout_date': data.get('return_date'),
+            'room_number': int(data.get('room_number', 1)),
+            'adults_number': int(data.get('adults', 1)),
+            'children_number': int(data.get('children', 0)),
+            'children_ages': data.get('children_ages', '')
         }
-
-        # Save parameters to JSON files
-        with open('flight_search_params.json', 'w') as f:
-            json.dump(flight_params, f, indent=4)
-        
-        with open('hotel_search_params.json', 'w') as f:
-            json.dump(hotel_params, f, indent=4)
 
         return flight_params, hotel_params
-
-    def analyze_results(self):
-        """Analyze the results from both flight and hotel searches"""
-        try:
-            with open('flight_options.json', 'r') as f:
-                flight_results = json.load(f)
-            with open('hotel_options.json', 'r') as f:
-                hotel_results = json.load(f)
-
-            # Format the results into a user-friendly message
-            response = "Here are the best travel options I found:\n\n"
-            
-            # Add flight information
-            response += "🛫 **Best Flight Options:**\n"
-            for i, flight in enumerate(flight_results[:3], 1):
-                response += f"{i}. {flight.get('airline_name', 'Airline')} Flight {flight.get('flight_number', '')}\n"
-                response += f"   • {flight.get('departure_airport')} → {flight.get('arrival_airport')}\n"
-                response += f"   • Departure: {flight.get('departure_time')}\n"
-                response += f"   • Duration: {flight.get('duration')}\n"
-                if flight.get('price'):
-                    response += f"   • Price: ${flight['price'].get('amount', 'N/A')} {flight['price'].get('currency', 'USD')}\n"
-                response += "\n"
-
-            # Add hotel information
-            response += "\n🏨 **Best Hotel Options:**\n"
-            for i, hotel in enumerate(hotel_results[:3], 1):
-                response += f"{i}. {hotel.get('name', 'Hotel Name')}\n"
-                response += f"   • Price: ${hotel.get('price', 'N/A')} per night\n"
-                if hotel.get('review_score'):
-                    response += f"   • Rating: {hotel.get('review_score')}/10\n"
-                response += "\n"
-
-            return response
-        except Exception as e:
-            return f"I apologize, but I encountered an error analyzing the results: {str(e)}"
 
     async def run(self, message: discord.Message):
         user_id = str(message.author.id)
@@ -143,6 +136,15 @@ class MistralAgent:
 
         # Build the messages list starting with system prompt
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        
+        # Add context about what information we already have
+        context = "Current travel information:\n"
+        for field, value in self.user_data[user_id].items():
+            if value is not None:
+                context += f"- {field}: {value}\n"
+        messages.append({"role": "system", "content": context})
+        
+        # Add conversation history
         messages.extend(self.conversation_history[user_id])
         messages.append({"role": "user", "content": message.content})
 
@@ -154,6 +156,22 @@ class MistralAgent:
 
         assistant_response = response.choices[0].message.content
 
+        # Extract travel data if present in the response
+        if "<travel_data>" in assistant_response and "</travel_data>" in assistant_response:
+            try:
+                data_start = assistant_response.index("<travel_data>") + len("<travel_data>")
+                data_end = assistant_response.index("</travel_data>")
+                data_str = assistant_response[data_start:data_end].strip()
+                travel_data = json.loads(data_str)
+                
+                # Update user data with new information
+                self.user_data[user_id].update(travel_data)
+                
+                # Remove the travel data section from the response
+                assistant_response = assistant_response[:data_start-len("<travel_data>")] + assistant_response[data_end+len("</travel_data>"):]
+            except json.JSONDecodeError:
+                pass
+
         # Update conversation history
         self.conversation_history[user_id].append({"role": "user", "content": message.content})
         self.conversation_history[user_id].append({"role": "assistant", "content": assistant_response})
@@ -163,17 +181,68 @@ class MistralAgent:
             self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history * 2:]
 
         # Check if we have all required information
-        all_fields_filled = all(value is not None for value in self.user_data[user_id].values())
+        required_fields = ['origin', 'destination', 'depart_date', 'return_date']
+        all_fields_filled = all(self.user_data[user_id].get(field) is not None for field in required_fields)
         
         if all_fields_filled:
-            # Generate search parameters
-            self.generate_search_params(user_id)
-            # Return analysis of results if available
             try:
-                if os.path.exists('flight_options.json') and os.path.exists('hotel_options.json'):
-                    return self.analyze_results()
+                # Generate search parameters
+                flight_params, hotel_params = self.generate_search_params(user_id)
+                
+                # Execute the searches
+                await message.channel.send("🔍 Searching for flights and hotels with your criteria...")
+                
+                # Execute flight search
+                search_flights(**flight_params)
+                
+                # Execute hotel search if we have coordinates
+                if hotel_params['latitude'] and hotel_params['longitude']:
+                    search_hotels(**hotel_params)
+                
+                # Analyze and combine results
+                response = "Here are the travel options I found:\n\n"
+                
+                # Add flight results
+                if os.path.exists('flight_options.json'):
+                    with open('flight_options.json', 'r') as f:
+                        flight_results = json.load(f)
+                        
+                    if flight_results:
+                        response += "🛫 **Flight Options:**\n"
+                        for i, flight in enumerate(flight_results[:3], 1):
+                            response += f"{i}. {flight.get('airline_name', 'Airline')} Flight {flight.get('flight_number', '')}\n"
+                            response += f"   • Route: {flight.get('departure_airport')} ({flight.get('departure_terminal', '')}) → {flight.get('arrival_airport')} ({flight.get('arrival_terminal', '')})\n"
+                            response += f"   • Departure: {flight.get('departure_time')}\n"
+                            response += f"   • Arrival: {flight.get('arrival_time')}\n"
+                            response += f"   • Duration: {flight.get('duration')}\n"
+                            response += f"   • Stops: {flight.get('stops', 0)}\n"
+                            if flight.get('price'):
+                                response += f"   • Price: ${flight['price'].get('amount', 'N/A')} {flight['price'].get('currency', 'USD')}\n"
+                            response += "\n"
+                
+                # Add hotel results
+                if os.path.exists('hotel_options.json'):
+                    with open('hotel_options.json', 'r') as f:
+                        hotel_results = json.load(f)
+                        
+                    if hotel_results:
+                        response += "\n🏨 **Hotel Options:**\n"
+                        for i, hotel in enumerate(hotel_results[:3], 1):
+                            response += f"{i}. {hotel.get('name', 'Hotel Name')}\n"
+                            response += f"   • Price per night: ${hotel.get('price', 'N/A')}\n"
+                            if hotel.get('review_score'):
+                                response += f"   • Rating: {hotel.get('review_score')}/10\n"
+                            response += f"   • Check-in: {hotel_params['checkin_date']}\n"
+                            response += f"   • Check-out: {hotel_params['checkout_date']}\n"
+                            response += "\n"
+                
+                if response == "Here are the travel options I found:\n\n":
+                    return "I searched but couldn't find any matches. Would you like to try different dates or locations?"
+                
+                return response
+                
             except Exception as e:
-                pass
+                return f"I encountered an error while searching: {str(e)}"
 
         return assistant_response
 

@@ -19,7 +19,6 @@ def process_hotel_data(data):
         hotel_info = {
             'name': hotel['name'],
             'price': hotel['priceBreakdown']['grossPrice']['value'],  # The gross price
-            'excluded_price': hotel['priceBreakdown']['excludedPrice']['value'],  # The excluded price
             'checkin': hotel.get('checkin', 'Not Available'),  # Example, adjust based on the response structure
             'checkout': hotel.get('checkout', 'Not Available'),  # Example, adjust based on the response structure
             'review_score': hotel.get('reviewScore', 'Not Available')  # Example, adjust based on the response structure
@@ -30,24 +29,45 @@ def process_hotel_data(data):
     # Return the processed results
     return processed_results
 
-def search_hotels(latitude, longitude, checkout_date, checkin_date, room_number, adults_number, children_number, children_ages):
-
+def search_hotels(**kwargs):
+    """
+    Search for hotels using exact parameter format required by the API.
+    Example format:
+    {
+        "categories_filter_ids": "class::2,class::4,free_cancellation::1",
+        "children_number": 2,
+        "page_number": 0,
+        "latitude": 40.776676,
+        "longitude": -73.971321,
+        "checkout_date": "2025-03-17",
+        "units": "metric",
+        "locale": "en-gb",
+        "checkin_date": "2025-03-16",
+        "include_adjacency": "true",
+        "room_number": 1,
+        "order_by": "popularity",
+        "children_ages": "5,0",
+        "filter_by_currency": "USD",
+        "adults_number": 2
+    }
+    """
+    # Ensure all parameters are in the exact format required
     params = {
-      "categories_filter_ids": "class::2,class::4,free_cancellation::1",
-      "children_number": children_number,
-      "page_number": 0,
-      "latitude": latitude,
-      "longitude": longitude,
-      "checkout_date": checkout_date,
-      "units": "metric",
-      "locale": "en-gb",
-      "checkin_date": checkin_date,
-      "include_adjacency": "true",
-      "room_number": room_number,
-      "order_by": "popularity",
-      "children_ages": children_ages,
-      "filter_by_currency": "USD",
-      "adults_number": adults_number
+        "categories_filter_ids": "class::2,class::4,free_cancellation::1",
+        "children_number": int(kwargs.get('children_number', 0)),
+        "page_number": 0,
+        "latitude": float(kwargs.get('latitude')),
+        "longitude": float(kwargs.get('longitude')),
+        "checkout_date": kwargs.get('checkout_date'),
+        "units": "metric",
+        "locale": "en-gb",
+        "checkin_date": kwargs.get('checkin_date'),
+        "include_adjacency": "true",
+        "room_number": int(kwargs.get('room_number', 1)),
+        "order_by": "popularity",
+        "children_ages": kwargs.get('children_ages', ''),
+        "filter_by_currency": "USD",
+        "adults_number": int(kwargs.get('adults_number', 1))
     }
 
     response = requests.get(hotels_url, headers=headers, params=params)
@@ -58,7 +78,6 @@ def search_hotels(latitude, longitude, checkout_date, checkin_date, room_number,
         # Save the entire processed data as a JSON file
         with open('hotel_options.json', 'w') as json_file:
             json.dump(processed_data, json_file, indent=4)
-
     else:
         print(f"Error: {response.status_code}")
         print(response.text)
