@@ -260,3 +260,9 @@ class MistralAgent:
         """Reset the conversation history and user data for a specific user"""
         self.conversation_history[user_id] = []
         self.user_data[user_id] = self.get_required_fields()
+        
+        # Delete JSON files if they exist
+        if os.path.exists('flight_options.json'):
+            os.remove('flight_options.json')
+        if os.path.exists('hotel_options.json'):
+            os.remove('hotel_options.json')
